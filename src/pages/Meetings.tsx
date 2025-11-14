@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,8 +22,42 @@ import { mockMeetings, Meeting } from "@/data/mockMeetings";
 import { Badge } from "@/components/ui/badge";
 
 export default function Meetings() {
-  const [meetings, setMeetings] = useState(mockMeetings);
+  const { mode } = useAuth();
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode === 'demo') {
+      setMeetings(mockMeetings);
+    } else if (mode === 'real') {
+      fetchMeetings();
+    }
+  }, [mode]);
+
+  const fetchMeetings = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('http://localhost:8000/fireflies/meetings');
+      const json = await response.json();
+      const transcripts = json.data.transcripts.map((t: any) => ({
+        id: t.id,
+        title: t.title,
+        date: new Date(t.date).toLocaleDateString(),
+        type: 'Other' as const,
+        summary: null,
+        transcript: null
+      }));
+      setMeetings(transcripts);
+    } catch (err) {
+      setError('Failed to fetch meetings from backend');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleTypeChange = (id: string, type: Meeting["type"]) => {
     setMeetings((prev) =>
@@ -30,8 +65,33 @@ export default function Meetings() {
     );
   };
 
-  const handleViewDetails = (meeting: Meeting) => {
-    setSelectedMeeting(meeting);
+  const handleViewDetails = async (meeting: Meeting) => {
+    if (mode === 'demo') {
+      setSelectedMeeting(meeting);
+    } else if (mode === 'real') {
+      setLoading(true);
+      try {
+        const response = await fetch(`http://localhost:8000/fireflies/transcript/${meeting.id}`);
+        const json = await response.json();
+        const transcript = json.data.transcript;
+        setSelectedMeeting({
+          id: transcript.id,
+          title: transcript.title,
+          date: transcript.date,
+          type: meeting.type,
+          summary: transcript.summary,
+          transcript: transcript.sentences.map((s: any) => ({
+            speaker: s.speaker_name,
+            timestamp: `${Math.floor(s.index / 60)}:${(s.index % 60).toString().padStart(2, '0')}`,
+            text: s.text
+          }))
+        });
+      } catch (err) {
+        console.error('Failed to fetch transcript', err);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
@@ -40,6 +100,8 @@ export default function Meetings() {
         {/* Meetings Table */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Fireflies Transcripts</h3>
+          {loading && <div className="text-sm text-muted-foreground mb-4">Loading...</div>}
+          {error && <div className="text-sm text-destructive mb-4">{error}</div>}
           <Table>
             <TableHeader>
               <TableRow>

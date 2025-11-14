@@ -6,9 +6,13 @@ import {
   FileText, 
   CheckSquare, 
   Box,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "./ui/button";
+import { ModeBadge } from "./ModeBadge";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -26,6 +30,7 @@ const navItems = [
 
 export const AppLayout = ({ children, pageTitle }: AppLayoutProps) => {
   const location = useLocation();
+  const { logout, username } = useAuth();
 
   return (
     <div className="min-h-screen bg-background flex w-full">
@@ -65,9 +70,25 @@ export const AppLayout = ({ children, pageTitle }: AppLayoutProps) => {
         {/* Top Header */}
         <header className="h-16 bg-card border-b border-border flex items-center justify-between px-6">
           <h2 className="text-lg font-semibold text-foreground">{pageTitle}</h2>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>Connected:</span>
-            <span className="text-foreground font-medium">Fireflies · Confluence · Jira</span>
+          <div className="flex items-center gap-4">
+            <ModeBadge />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Connected:</span>
+              <span className="text-foreground font-medium">Fireflies · Confluence · Jira</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {username}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </header>
 

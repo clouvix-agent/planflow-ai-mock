@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,59 +16,148 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default function Jira() {
+  const { mode } = useAuth();
+  const [projects, setProjects] = useState<string[]>([]);
+  const [selectedProject, setSelectedProject] = useState("");
   const [createForm, setCreateForm] = useState({
-    project: "",
-    issueType: "",
+    projectKey: "",
+    issueType: "Story",
     summary: "",
     description: "",
     labels: "",
-    priority: "",
+    priority: "Medium",
   });
-  const [fetchKey, setFetchKey] = useState("");
+  const [issueKey, setIssueKey] = useState("");
   const [fetchedIssue, setFetchedIssue] = useState<any>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleCreateIssue = () => {
-    // Mock success
-    const mockKey = `${createForm.project}-${Math.floor(Math.random() * 1000)}`;
-    setCreateSuccess(mockKey);
-    // Reset form
-    setCreateForm({
-      project: "",
-      issueType: "",
-      summary: "",
-      description: "",
-      labels: "",
-      priority: "",
-    });
-    setTimeout(() => setCreateSuccess(null), 5000);
+  useEffect(() => {
+    if (mode === 'demo') {
+      setProjects(["PROJ", "AUTH", "UI"]);
+      setSelectedProject("PROJ");
+      setCreateForm(prev => ({ ...prev, projectKey: "PROJ" }));
+    } else if (mode === 'real') {
+      fetchProjects();
+    }
+  }, [mode]);
+
+  const fetchProjects = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('http://localhost:8000/jira/projects');
+      const json = await response.json();
+      const projectKeys = json.values.map((p: any) => p.key);
+      setProjects(projectKeys);
+      if (projectKeys.length > 0) {
+        setSelectedProject(projectKeys[0]);
+        setCreateForm(prev => ({ ...prev, projectKey: projectKeys[0] }));
+      }
+    } catch (err) {
+      setError('Failed to fetch Jira projects');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFetchIssue = () => {
-    // Mock fetched issue
-    setFetchedIssue({
-      key: fetchKey,
-      fields: {
-        summary: "Implement user authentication",
-        description: "Add OAuth 2.0 support for Google and GitHub sign-in.",
-        issuetype: { name: "Story" },
-        priority: { name: "High" },
-        status: { name: "In Progress" },
-        labels: ["auth", "security"],
-        assignee: { displayName: "Alex Thompson" },
-      },
-    });
+  const handleCreateIssue = async () => {
+    if (mode === 'demo') {
+      setCreateSuccess(`PROJ-142`);
+      setTimeout(() => setCreateSuccess(null), 3000);
+    } else if (mode === 'real') {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('http://localhost:8000/jira/issue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summary: createForm.summary,
+            description: createForm.description,
+            issue_type: createForm.issueType,
+            project_key: createForm.projectKey,
+            labels: createForm.labels.split(',').map(l => l.trim()).filter(Boolean),
+            priority: createForm.priority
+          })
+        });
+        const json = await response.json();
+        setCreateSuccess(json.key);
+        setTimeout(() => setCreateSuccess(null), 3000);
+      } catch (err) {
+        setError('Failed to create issue');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
-  const handleUpdateIssue = () => {
-    setUpdateSuccess(true);
-    setTimeout(() => setUpdateSuccess(false), 3000);
+  const handleFetchIssue = async () => {
+    if (mode === 'demo') {
+      setFetchedIssue({
+        key: issueKey,
+        fields: {
+          summary: "Example task summary",
+          description: "This is a mock description.",
+          labels: ["backend", "urgent"],
+          priority: { name: "High" },
+        },
+      });
+    } else if (mode === 'real') {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`http://localhost:8000/jira/issue/${issueKey}`);
+        const json = await response.json();
+        setFetchedIssue(json);
+      } catch (err) {
+        setError('Failed to fetch issue');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleUpdateIssue = async () => {
+    if (mode === 'demo') {
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    } else if (mode === 'real') {
+      setLoading(true);
+      setError(null);
+      try {
+        await fetch(`http://localhost:8000/jira/issue/${fetchedIssue.key}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            summary: fetchedIssue.fields.summary,
+            description: fetchedIssue.fields.description,
+            labels: fetchedIssue.fields.labels,
+            priority: fetchedIssue.fields.priority.name
+          })
+        });
+        setUpdateSuccess(true);
+        setTimeout(() => setUpdateSuccess(false), 3000);
+      } catch (err) {
+        setError('Failed to update issue');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   return (
     <AppLayout pageTitle="Jira Console">
-      <div className="space-y-6 max-w-4xl">
+      <div className="space-y-6">
+        {loading && <div className="text-sm text-muted-foreground">Loading...</div>}
+        {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+
         {/* Create Issue Form */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Create Jira Issue</h3>
@@ -76,21 +166,22 @@ export default function Jira() {
               <div>
                 <Label htmlFor="project">Project Key</Label>
                 <Select
-                  value={createForm.project}
+                  value={createForm.projectKey}
                   onValueChange={(value) =>
-                    setCreateForm({ ...createForm, project: value })
+                    setCreateForm({ ...createForm, projectKey: value })
                   }
                 >
                   <SelectTrigger id="project" className="mt-2">
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PROJ">PROJ</SelectItem>
-                    <SelectItem value="AUTH">AUTH</SelectItem>
-                    <SelectItem value="UI">UI</SelectItem>
+                    {projects.map(p => (
+                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
+
               <div>
                 <Label htmlFor="issueType">Issue Type</Label>
                 <Select
@@ -100,7 +191,7 @@ export default function Jira() {
                   }
                 >
                   <SelectTrigger id="issueType" className="mt-2">
-                    <SelectValue placeholder="Select type" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Story">Story</SelectItem>
@@ -116,12 +207,12 @@ export default function Jira() {
               <Label htmlFor="summary">Summary</Label>
               <Input
                 id="summary"
+                className="mt-2"
                 value={createForm.summary}
                 onChange={(e) =>
                   setCreateForm({ ...createForm, summary: e.target.value })
                 }
                 placeholder="Brief description of the issue"
-                className="mt-2"
               />
             </div>
 
@@ -129,13 +220,13 @@ export default function Jira() {
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
+                className="mt-2"
+                rows={4}
                 value={createForm.description}
                 onChange={(e) =>
                   setCreateForm({ ...createForm, description: e.target.value })
                 }
                 placeholder="Detailed description"
-                rows={4}
-                className="mt-2"
               />
             </div>
 
@@ -144,14 +235,15 @@ export default function Jira() {
                 <Label htmlFor="labels">Labels (comma-separated)</Label>
                 <Input
                   id="labels"
+                  className="mt-2"
                   value={createForm.labels}
                   onChange={(e) =>
                     setCreateForm({ ...createForm, labels: e.target.value })
                   }
-                  placeholder="auth, api, urgent"
-                  className="mt-2"
+                  placeholder="e.g., backend, urgent"
                 />
               </div>
+
               <div>
                 <Label htmlFor="priority">Priority</Label>
                 <Select
@@ -161,25 +253,24 @@ export default function Jira() {
                   }
                 >
                   <SelectTrigger id="priority" className="mt-2">
-                    <SelectValue placeholder="Select priority" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Highest">Highest</SelectItem>
                     <SelectItem value="High">High</SelectItem>
                     <SelectItem value="Medium">Medium</SelectItem>
                     <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Lowest">Lowest</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <Button onClick={handleCreateIssue} className="w-full">
-              Create Issue
-            </Button>
+            <Button onClick={handleCreateIssue}>Create Issue</Button>
 
             {createSuccess && (
-              <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-sm font-medium text-foreground">
+              <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
+                <p className="text-sm text-green-800">
                   ✓ Issue created successfully: <strong>{createSuccess}</strong>
                 </p>
               </div>
@@ -191,35 +282,38 @@ export default function Jira() {
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Fetch & Update Issue</h3>
           <div className="space-y-4">
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <div className="flex-1">
-                <Label htmlFor="fetchKey">Issue Key</Label>
+                <Label htmlFor="issueKey">Issue Key</Label>
                 <Input
-                  id="fetchKey"
-                  value={fetchKey}
-                  onChange={(e) => setFetchKey(e.target.value)}
-                  placeholder="e.g., PROJ-123"
+                  id="issueKey"
                   className="mt-2"
+                  value={issueKey}
+                  onChange={(e) => setIssueKey(e.target.value)}
+                  placeholder="e.g., PROJ-123"
                 />
               </div>
-              <div className="self-end">
+              <div className="flex items-end">
                 <Button onClick={handleFetchIssue}>Fetch Issue</Button>
               </div>
             </div>
 
             {fetchedIssue && (
-              <div className="space-y-4 mt-6 p-4 bg-muted/30 rounded-lg">
+              <div className="space-y-4 border-t pt-4 mt-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-foreground">
+                    {fetchedIssue.key}
+                  </h4>
+                  <Badge variant="outline">
+                    {fetchedIssue.fields.priority.name}
+                  </Badge>
+                </div>
+
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h4 className="text-sm font-semibold">
-                      {fetchedIssue.key}
-                    </h4>
-                    <Badge variant="outline">
-                      {fetchedIssue.fields.issuetype.name}
-                    </Badge>
-                    <Badge>{fetchedIssue.fields.status.name}</Badge>
-                  </div>
+                  <Label htmlFor="editSummary">Summary</Label>
                   <Input
+                    id="editSummary"
+                    className="mt-2"
                     value={fetchedIssue.fields.summary}
                     onChange={(e) =>
                       setFetchedIssue({
@@ -230,14 +324,16 @@ export default function Jira() {
                         },
                       })
                     }
-                    className="font-medium"
                   />
                 </div>
 
                 <div>
-                  <Label>Description</Label>
+                  <Label htmlFor="editDescription">Description</Label>
                   <Textarea
-                    value={fetchedIssue.fields.description}
+                    id="editDescription"
+                    className="mt-2"
+                    rows={4}
+                    value={fetchedIssue.fields.description || ""}
                     onChange={(e) =>
                       setFetchedIssue({
                         ...fetchedIssue,
@@ -247,51 +343,13 @@ export default function Jira() {
                         },
                       })
                     }
-                    rows={3}
-                    className="mt-2"
                   />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Priority</Label>
-                    <Select
-                      value={fetchedIssue.fields.priority.name}
-                      onValueChange={(value) =>
-                        setFetchedIssue({
-                          ...fetchedIssue,
-                          fields: {
-                            ...fetchedIssue.fields,
-                            priority: { name: value },
-                          },
-                        })
-                      }
-                    >
-                      <SelectTrigger className="mt-2">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Highest">Highest</SelectItem>
-                        <SelectItem value="High">High</SelectItem>
-                        <SelectItem value="Medium">Medium</SelectItem>
-                        <SelectItem value="Low">Low</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Assignee</Label>
-                    <Input
-                      value={fetchedIssue.fields.assignee.displayName}
-                      disabled
-                      className="mt-2"
-                    />
-                  </div>
                 </div>
 
                 <div>
                   <Label>Labels</Label>
                   <div className="flex gap-2 mt-2">
-                    {fetchedIssue.fields.labels.map((label: string) => (
+                    {fetchedIssue.fields.labels?.map((label: string) => (
                       <Badge key={label} variant="secondary">
                         {label}
                       </Badge>
@@ -299,13 +357,11 @@ export default function Jira() {
                   </div>
                 </div>
 
-                <Button onClick={handleUpdateIssue} className="w-full">
-                  Update Issue
-                </Button>
+                <Button onClick={handleUpdateIssue}>Update Issue</Button>
 
                 {updateSuccess && (
-                  <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                    <p className="text-sm font-medium text-foreground">
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-800">
                       ✓ Issue updated successfully
                     </p>
                   </div>
