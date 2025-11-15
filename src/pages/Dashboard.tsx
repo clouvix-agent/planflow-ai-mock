@@ -263,10 +263,10 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-foreground">
-                      Progress: {sprintData.completion_percent}% ({sprintData.completed_issues}/{sprintData.total_issues} issues completed)
+                      Progress: {sprintData.completion_percent ?? 0}% ({sprintData.completed_issues ?? 0}/{sprintData.total_issues ?? 0} issues completed)
                     </span>
                   </div>
-                  <Progress value={sprintData.completion_percent} className="h-3" />
+                  <Progress value={sprintData.completion_percent ?? 0} className="h-3" />
                 </div>
 
                 <div className="mt-6 space-y-3">
