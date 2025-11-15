@@ -13,6 +13,7 @@ import Context from "./pages/Context";
 import Actions from "./pages/Actions";
 import Jira from "./pages/Jira";
 import Settings from "./pages/Settings";
+import RoadmapPlanner from "./pages/RoadmapPlanner";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/context" element={<ProtectedRoute><Context /></ProtectedRoute>} />
               <Route path="/actions" element={<ProtectedRoute><Actions /></ProtectedRoute>} />
               <Route path="/jira" element={<ProtectedRoute><Jira /></ProtectedRoute>} />
+              <Route path="/roadmap" element={<ProtectedRoute><RoadmapPlanner /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

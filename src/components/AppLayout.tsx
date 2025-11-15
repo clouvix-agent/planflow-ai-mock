@@ -6,6 +6,7 @@ import {
   FileText, 
   CheckSquare, 
   Box,
+  Map,
   Settings as SettingsIcon,
   LogOut
 } from "lucide-react";
@@ -25,6 +26,7 @@ const navItems = [
   { label: "Context", path: "/context", icon: FileText },
   { label: "Sprint Actions", path: "/actions", icon: CheckSquare },
   { label: "Jira Console", path: "/jira", icon: Box },
+  { label: "Roadmap Sprint Planner", path: "/roadmap", icon: Map },
   { label: "Settings", path: "/settings", icon: SettingsIcon },
 ];
 
