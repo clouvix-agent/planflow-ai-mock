@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useContextPages } from "@/contexts/ContextPagesContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,6 +112,7 @@ const mockAIAnalysis: AIAnalysis = {
 
 export default function Meetings() {
   const { mode } = useAuth();
+  const { selectedContextPages } = useContextPages();
   const { toast } = useToast();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
@@ -174,7 +176,8 @@ export default function Meetings() {
             body: JSON.stringify({
               meeting_type: meeting.type,
               sprint_name: sprintName,
-              participants: []
+              participants: [],
+              context_page_ids: selectedContextPages.map(p => p.id)
             })
           }
         );
