@@ -15,7 +15,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StoryPlan {
   action_type: "create";
@@ -68,13 +69,16 @@ export default function RoadmapPlanner() {
   const [roadmapPages, setRoadmapPages] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedRoadmapPageId, setSelectedRoadmapPageId] = useState<string>("");
 
+  // Quarter selection
+  const [selectedQuarters, setSelectedQuarters] = useState<string[]>(["Q1", "Q2", "Q3", "Q4"]);
+
   // Roadmap plan
   const [roadmapPlan, setRoadmapPlan] = useState<RoadmapPlan | null>(null);
   const [generating, setGenerating] = useState(false);
 
   // Expanded states
   const [expandedQuarters, setExpandedQuarters] = useState<Record<string, boolean>>({});
-  const [expandedEpics, setExpandedEpics] = useState<Record<string, boolean>>({});
+  const [expandedEpicIds, setExpandedEpicIds] = useState<Record<string, boolean>>({});
   const [editingEpics, setEditingEpics] = useState<Record<string, boolean>>({});
   const [editingStories, setEditingStories] = useState<Record<string, boolean>>({});
 
@@ -202,6 +206,7 @@ export default function RoadmapPlanner() {
           roadmap_page_id: selectedRoadmapPageId,
           project_key: selectedProjectKey || null,
           sprints_per_quarter: 6,
+          quarters_to_include: selectedQuarters,
         }),
       });
 
@@ -625,16 +630,138 @@ export default function RoadmapPlanner() {
                       return (
                         <Card key={epic.epic_temp_id} className={isRejected ? "opacity-50" : ""}>
                           <CardHeader>
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <Badge>Epic</Badge>
-                                  {epic.jira_issue_key && (
-                                    <Badge variant="secondary">{epic.jira_issue_key}</Badge>
-                                  )}
-                                  {isApproved && <Badge variant="default">Approved</Badge>}
-                                  {isRejected && <Badge variant="destructive">Rejected</Badge>}
-                                </div>
+                            <div className="flex-1 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <Badge>Epic</Badge>
+                                {epic.jira_issue_key && (
+                                  <Badge variant="secondary">{epic.jira_issue_key}</Badge>
+                                )}
+                                {isApproved && <Badge variant="default">Approved</Badge>}
+                                {isRejected && <Badge variant="destructive">Rejected</Badge>}
+                              </div>
+                              <p className="font-semibold text-lg">{epic.epic_summary}</p>
+                            </div>
+                            <Button variant="ghost" size="sm">
+                              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            </Button>
+                          </div>
+
+                          {/* Epic Body - Collapsible */}
+                          {isExpanded && (
+                            <div className="mt-4 space-y-4">
+                              <div className="space-y-2">{isEditing ? (
+                                  <div className="space-y-2">
+                                    <div>
+                                      <label className="text-sm font-medium">Epic Summary</label>
+                                      <Input
+                                        value={epic.epic_summary}
+                                        onChange={(e) =>
+                                          updateEpicField(qIdx, eIdx, "epic_summary", e.target.value)
+                                        }
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium">Epic Description</label>
+                                      <Textarea
+                                        value={epic.epic_description}
+                                        onChange={(e) =>
+                                          updateEpicField(qIdx, eIdx, "epic_description", e.target.value)
+                                        }
+                                        rows={3}
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-sm font-medium">Epic Acceptance Criteria</label>
+                                      <Textarea
+                                        value={epic.epic_acceptance_criteria.join("\n")}
+                                        onChange={(e) =>
+                                          updateEpicField(
+                                            qIdx,
+                                            eIdx,
+                                            "epic_acceptance_criteria",
+                                            e.target.value.split("\n")
+                                          )
+                                        }
+                                        rows={3}
+                                      />
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-2">
+                                    <p className="text-sm whitespace-pre-wrap">{epic.epic_description}</p>
+                                    <div>
+                                      <p className="text-sm font-medium">Epic Acceptance Criteria:</p>
+                                      <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                        {epic.epic_acceptance_criteria.map((ac, idx) => (
+                                          <li key={idx}>{ac}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex gap-2">
+                                {!isApproved && !isRejected && (
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setEditingEpics((prev) => ({
+                                          ...prev,
+                                          [epicKey]: !prev[epicKey],
+                                        }));
+                                      }}
+                                    >
+                                      {isEditing ? "Done" : "Edit"}
+                                    </Button>
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleApproveEpic(qIdx, eIdx);
+                                      }}
+                                    >
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRejectEpic(qIdx, eIdx);
+                                      }}
+                                    >
+                                      Reject
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Stories under Epic */}
+                              {epic.stories.length > 0 && (
+                                <div className="space-y-3 pt-4 border-t">
+                                  <p className="text-sm font-medium">Stories (Sprint Backlog):</p>
+                                  {epic.stories.map((story, sIdx) => {
+                                    const storyKey = `${epicKey}-story-${sIdx}`;
+                                    const storyEditing = editingStories[storyKey];
+                                    const storyRejected = story.status === "rejected";
+                                    const storyApproved = story.status === "approved";
+
+                                    if (storyRejected) return null;
+
+                                    return (
+                                      <Card 
+                                        key={sIdx} 
+                                        className={cn(
+                                          "p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700",
+                                          storyApproved && "border-l-4 border-l-blue-400",
+                                          storyRejected && "opacity-60"
+                                        )}
+                                      >
 
                                 {isEditing ? (
                                   <div className="space-y-2">
@@ -751,114 +878,113 @@ export default function RoadmapPlanner() {
                                             </div>
 
                                             {storyEditing ? (
-                                              <div className="space-y-2">
-                                                <div>
-                                                  <label className="text-sm font-medium">Summary</label>
-                                                  <Input
-                                                    value={story.summary}
-                                                    onChange={(e) =>
-                                                      updateStoryField(qIdx, eIdx, sIdx, "summary", e.target.value)
-                                                    }
-                                                  />
-                                                </div>
-                                                <div>
-                                                  <label className="text-sm font-medium">Description</label>
-                                                  <Textarea
-                                                    value={story.description}
-                                                    onChange={(e) =>
-                                                      updateStoryField(qIdx, eIdx, sIdx, "description", e.target.value)
-                                                    }
-                                                    rows={3}
-                                                  />
-                                                </div>
-                                                <div>
-                                                  <label className="text-sm font-medium">Acceptance Criteria</label>
-                                                  <Textarea
-                                                    value={story.acceptance_criteria.join("\n")}
-                                                    onChange={(e) =>
-                                                      updateStoryField(
-                                                        qIdx,
-                                                        eIdx,
-                                                        sIdx,
-                                                        "acceptance_criteria",
-                                                        e.target.value.split("\n")
-                                                      )
-                                                    }
-                                                    rows={3}
-                                                  />
-                                                </div>
-                                                <div>
-                                                  <label className="text-sm font-medium">Target Sprint Index</label>
-                                                  <Input
-                                                    type="number"
-                                                    value={story.target_sprint_index}
-                                                    onChange={(e) =>
-                                                      updateStoryField(
-                                                        qIdx,
-                                                        eIdx,
-                                                        sIdx,
-                                                        "target_sprint_index",
-                                                        parseInt(e.target.value)
-                                                      )
-                                                    }
-                                                  />
-                                                </div>
-                                                <div>
-                                                  <label className="text-sm font-medium">Dependencies</label>
-                                                  <Input
-                                                    value={story.dependencies.join(", ")}
-                                                    onChange={(e) =>
-                                                      updateStoryField(
-                                                        qIdx,
-                                                        eIdx,
-                                                        sIdx,
-                                                        "dependencies",
-                                                        e.target.value.split(",").map((d) => d.trim())
-                                                      )
-                                                    }
-                                                  />
-                                                </div>
-                                                <div>
-                                                  <label className="text-sm font-medium">Assignee</label>
-                                                  <Input
-                                                    value={story.assignee || ""}
-                                                    onChange={(e) =>
-                                                      updateStoryField(qIdx, eIdx, sIdx, "assignee", e.target.value)
-                                                    }
-                                                  />
-                                                </div>
+                                            <div className="space-y-2">
+                                              <div>
+                                                <label className="text-sm font-medium">Summary</label>
+                                                <Input
+                                                  value={story.summary}
+                                                  onChange={(e) =>
+                                                    updateStoryField(qIdx, eIdx, sIdx, "summary", e.target.value)
+                                                  }
+                                                />
                                               </div>
-                                            ) : (
-                                              <div className="space-y-1">
-                                                <p className="font-medium">{story.summary}</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                  Target Sprint: Sprint {story.target_sprint_index}
+                                              <div>
+                                                <label className="text-sm font-medium">Description</label>
+                                                <Textarea
+                                                  value={story.description}
+                                                  onChange={(e) =>
+                                                    updateStoryField(qIdx, eIdx, sIdx, "description", e.target.value)
+                                                  }
+                                                  rows={3}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-sm font-medium">Acceptance Criteria</label>
+                                                <Textarea
+                                                  value={story.acceptance_criteria.join("\n")}
+                                                  onChange={(e) =>
+                                                    updateStoryField(
+                                                      qIdx,
+                                                      eIdx,
+                                                      sIdx,
+                                                      "acceptance_criteria",
+                                                      e.target.value.split("\n")
+                                                    )
+                                                  }
+                                                  rows={3}
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-sm font-medium">Target Sprint Index</label>
+                                                <Input
+                                                  type="number"
+                                                  value={story.target_sprint_index}
+                                                  onChange={(e) =>
+                                                    updateStoryField(
+                                                      qIdx,
+                                                      eIdx,
+                                                      sIdx,
+                                                      "target_sprint_index",
+                                                      parseInt(e.target.value)
+                                                    )
+                                                  }
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-sm font-medium">Dependencies</label>
+                                                <Input
+                                                  value={story.dependencies.join(", ")}
+                                                  onChange={(e) =>
+                                                    updateStoryField(
+                                                      qIdx,
+                                                      eIdx,
+                                                      sIdx,
+                                                      "dependencies",
+                                                      e.target.value.split(",").map((d) => d.trim())
+                                                    )
+                                                  }
+                                                />
+                                              </div>
+                                              <div>
+                                                <label className="text-sm font-medium">Assignee</label>
+                                                <Input
+                                                  value={story.assignee || ""}
+                                                  onChange={(e) =>
+                                                    updateStoryField(qIdx, eIdx, sIdx, "assignee", e.target.value)
+                                                  }
+                                                />
+                                              </div>
+                                            </div>
+                                          ) : (
+                                            <div className="space-y-1">
+                                              <p className="font-medium">{story.summary}</p>
+                                              <p className="text-sm text-muted-foreground">
+                                                Target Sprint: Sprint {story.target_sprint_index}
+                                              </p>
+                                              <p className="text-sm whitespace-pre-wrap">{story.description}</p>
+                                              <div>
+                                                <p className="text-sm font-medium">Acceptance Criteria:</p>
+                                                <ul className="list-disc list-inside text-sm text-muted-foreground">
+                                                  {story.acceptance_criteria.map((ac, idx) => (
+                                                    <li key={idx}>{ac}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                              {story.assignee && (
+                                                <p className="text-sm">
+                                                  <span className="font-medium">Assignee:</span> {story.assignee}
                                                 </p>
-                                                <p className="text-sm whitespace-pre-wrap">{story.description}</p>
-                                                <div>
-                                                  <p className="text-sm font-medium">Acceptance Criteria:</p>
-                                                  <ul className="list-disc list-inside text-sm text-muted-foreground">
-                                                    {story.acceptance_criteria.map((ac, idx) => (
-                                                      <li key={idx}>{ac}</li>
-                                                    ))}
-                                                  </ul>
-                                                </div>
-                                                {story.assignee && (
-                                                  <p className="text-sm">
-                                                    <span className="font-medium">Assignee:</span> {story.assignee}
-                                                  </p>
-                                                )}
-                                                {story.dependencies.length > 0 && (
-                                                  <p className="text-sm">
-                                                    <span className="font-medium">Dependencies:</span>{" "}
-                                                    {story.dependencies.join(", ")}
-                                                  </p>
-                                                )}
-                                              </div>
-                                            )}
-                                          </div>
+                                              )}
+                                              {story.dependencies.length > 0 && (
+                                                <p className="text-sm">
+                                                  <span className="font-medium">Dependencies:</span>{" "}
+                                                  {story.dependencies.join(", ")}
+                                                </p>
+                                              )}
+                                            </div>
+                                          )}
 
-                                          <div className="flex gap-2">
+                                          <div className="flex gap-2 mt-3">
                                             {!storyApproved && (
                                               <>
                                                 <Button
@@ -891,12 +1017,12 @@ export default function RoadmapPlanner() {
                                             )}
                                           </div>
                                         </div>
-                                      </CardContent>
-                                    </Card>
-                                  );
-                                })}
-                              </div>
-                            </CardContent>
+                                      </Card>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
                           )}
                         </Card>
                       );
