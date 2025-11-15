@@ -122,6 +122,43 @@ export default function Meetings() {
   const [analyzingLoading, setAnalyzingLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingAction, setEditingAction] = useState<number | null>(null);
+  
+  // Jira configuration state
+  const [projects, setProjects] = useState<Array<{ id: string; key: string; name: string }>>([]);
+  const [selectedProjectKey, setSelectedProjectKey] = useState<string>("");
+  const [boards, setBoards] = useState<Array<{ id: number; name: string; type: string }>>([]);
+  const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
+  const [sprints, setSprints] = useState<Array<{ id: number; name: string; state: string }>>([]);
+  const [selectedSprintName, setSelectedSprintName] = useState<string>("");
+  const [selectedSprintId, setSelectedSprintId] = useState<number | null>(null);
+
+  // Fetch Jira projects on mount
+  useEffect(() => {
+    if (mode === 'real') {
+      fetchProjects();
+    }
+  }, [mode]);
+
+  // Fetch boards when project changes
+  useEffect(() => {
+    if (mode === 'real' && selectedProjectKey) {
+      fetchBoards(selectedProjectKey);
+    } else {
+      setBoards([]);
+      setSelectedBoardId(null);
+    }
+  }, [selectedProjectKey, mode]);
+
+  // Fetch sprints when board changes
+  useEffect(() => {
+    if (mode === 'real' && selectedBoardId) {
+      fetchSprints(selectedBoardId);
+    } else {
+      setSprints([]);
+      setSelectedSprintName("");
+      setSelectedSprintId(null);
+    }
+  }, [selectedBoardId, mode]);
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -130,6 +167,65 @@ export default function Meetings() {
       fetchMeetings();
     }
   }, [mode]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/jira/projects');
+      const data = await response.json();
+      setProjects(data.values || []);
+      // Auto-select first project if available
+      if (data.values && data.values.length > 0) {
+        setSelectedProjectKey(data.values[0].key);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Jira projects', err);
+      toast({
+        title: "Failed to fetch projects",
+        description: "Could not load Jira projects.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchBoards = async (projectKey: string) => {
+    try {
+      const response = await fetch(`http://localhost:8000/jira/boards?project_key=${projectKey}`);
+      const data = await response.json();
+      setBoards(data.values || []);
+      // Auto-select first board if available
+      if (data.values && data.values.length > 0) {
+        setSelectedBoardId(data.values[0].id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Jira boards', err);
+      toast({
+        title: "Failed to fetch boards",
+        description: "Could not load Jira boards for this project.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchSprints = async (boardId: number) => {
+    try {
+      const response = await fetch(`http://localhost:8000/jira/sprints?board_id=${boardId}&state=active,future`);
+      const data = await response.json();
+      setSprints(data.values || []);
+      // Auto-select first active sprint if available
+      if (data.values && data.values.length > 0) {
+        const activeSprint = data.values.find((s: any) => s.state === 'active') || data.values[0];
+        setSelectedSprintName(activeSprint.name);
+        setSelectedSprintId(activeSprint.id);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Jira sprints', err);
+      toast({
+        title: "Failed to fetch sprints",
+        description: "Could not load sprints for this board.",
+        variant: "destructive"
+      });
+    }
+  };
 
   const fetchMeetings = async () => {
     setLoading(true);
@@ -175,7 +271,7 @@ export default function Meetings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               meeting_type: meeting.type,
-              sprint_name: sprintName,
+              sprint_name: selectedSprintName || null,
               participants: [],
               context_page_ids: selectedContextPages.map(p => p.id)
             })
@@ -244,7 +340,7 @@ export default function Meetings() {
             summary: action.summary,
             description: description,
             issue_type: 'Story',
-            project_key: 'PROJ',
+            project_key: selectedProjectKey || 'PROJ',
             labels: ['planflow-ai', 'from-meeting'],
             priority: 'Medium'
           })
@@ -379,19 +475,99 @@ export default function Meetings() {
   return (
     <AppLayout pageTitle="Meetings">
       <div className="space-y-6">
+        {/* Jira Configuration Section */}
+        {mode === 'real' && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Jira Configuration</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Project Dropdown */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Project</label>
+                <Select value={selectedProjectKey} onValueChange={setSelectedProjectKey}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map(project => (
+                      <SelectItem key={project.id} value={project.key}>
+                        {project.key} – {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Board Dropdown */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Board</label>
+                <Select 
+                  value={selectedBoardId?.toString() || ""} 
+                  onValueChange={(val) => setSelectedBoardId(parseInt(val))}
+                  disabled={!selectedProjectKey || boards.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select board" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {boards.map(board => (
+                      <SelectItem key={board.id} value={board.id.toString()}>
+                        {board.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sprint Dropdown */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">Sprint</label>
+                <Select 
+                  value={selectedSprintId?.toString() || ""} 
+                  onValueChange={(val) => {
+                    const sprintId = parseInt(val);
+                    const sprint = sprints.find(s => s.id === sprintId);
+                    if (sprint) {
+                      setSelectedSprintId(sprintId);
+                      setSelectedSprintName(sprint.name);
+                    }
+                  }}
+                  disabled={!selectedBoardId || sprints.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select sprint" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sprints.map(sprint => (
+                      <SelectItem key={sprint.id} value={sprint.id.toString()}>
+                        {sprint.name} ({sprint.state})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Status Text */}
+            {selectedProjectKey && selectedBoardId && selectedSprintName && (
+              <div className="mt-4 text-sm text-muted-foreground">
+                Using Jira project: <span className="font-medium text-foreground">{selectedProjectKey}</span>, 
+                board: <span className="font-medium text-foreground">{boards.find(b => b.id === selectedBoardId)?.name}</span>, 
+                sprint: <span className="font-medium text-foreground">{selectedSprintName}</span>
+              </div>
+            )}
+            
+            {!selectedSprintName && selectedProjectKey && (
+              <div className="mt-4 text-sm text-amber-600">
+                ⚠️ No sprint selected – AI will not tag actions to a sprint.
+              </div>
+            )}
+          </Card>
+        )}
+        
         {/* Meetings Table */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold">Fireflies Transcripts</h3>
-            <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Target Sprint:</label>
-              <Input
-                value={sprintName}
-                onChange={(e) => setSprintName(e.target.value)}
-                placeholder="Sprint 21"
-                className="w-32"
-              />
-            </div>
           </div>
           {loading && <div className="text-sm text-muted-foreground mb-4">Loading...</div>}
           {error && <div className="text-sm text-destructive mb-4">{error}</div>}
