@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
+import { useContextPages } from "@/contexts/ContextPagesContext";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -17,8 +18,8 @@ import { mockPRDs, PRD } from "@/data/mockPRDs";
 
 export default function Context() {
   const { mode } = useAuth();
+  const { selectedContextPages, togglePageSelection, isPageSelected } = useContextPages();
   const [prds, setPrds] = useState<PRD[]>([]);
-  const [selectedPRDs, setSelectedPRDs] = useState<Set<string>>(new Set());
   const [previewPRD, setPreviewPRD] = useState<PRD | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,17 +53,6 @@ export default function Context() {
     }
   };
 
-  const handleToggleSelection = (id: string) => {
-    setSelectedPRDs((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(id)) {
-        updated.delete(id);
-      } else {
-        updated.add(id);
-      }
-      return updated;
-    });
-  };
 
   const handlePreview = async (prd: PRD) => {
     if (mode === 'demo') {
@@ -92,6 +82,16 @@ export default function Context() {
         {/* Left: PRD Table */}
         <Card className="p-6">
           <h3 className="text-lg font-semibold mb-4">Confluence Documents</h3>
+          {selectedContextPages.length > 0 && (
+            <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <p className="text-sm font-medium mb-1">
+                Selected context pages (used in meeting analysis):
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {selectedContextPages.map(p => p.title).join(', ')}
+              </p>
+            </div>
+          )}
           {loading && <div className="text-sm text-muted-foreground mb-4">Loading...</div>}
           {error && <div className="text-sm text-destructive mb-4">{error}</div>}
           <Table>
@@ -108,8 +108,8 @@ export default function Context() {
                 <TableRow key={prd.id}>
                   <TableCell>
                     <Checkbox
-                      checked={selectedPRDs.has(prd.id)}
-                      onCheckedChange={() => handleToggleSelection(prd.id)}
+                      checked={isPageSelected(prd.id)}
+                      onCheckedChange={() => togglePageSelection({ id: prd.id, title: prd.title })}
                     />
                   </TableCell>
                   <TableCell className="font-medium">{prd.title}</TableCell>
@@ -136,7 +136,7 @@ export default function Context() {
             </TableBody>
           </Table>
           <div className="mt-4 text-sm text-muted-foreground">
-            Selected: {selectedPRDs.size} document(s)
+            Selected: {selectedContextPages.length} document(s)
           </div>
         </Card>
 
