@@ -31,7 +31,7 @@ interface CurrentSprintData {
   sprint_name: string;
   start_date: string;
   end_date: string;
-  completion_percentage: number;
+  completion_percent: number;
   total_issues: number;
   completed_issues: number;
   issues: SprintIssue[];
@@ -62,6 +62,7 @@ export default function Dashboard() {
 
   // Expanded epics state
   const [expandedEpics, setExpandedEpics] = useState<Record<string, boolean>>({});
+  const [isSprintIssuesExpanded, setIsSprintIssuesExpanded] = useState(false);
 
   // Fetch projects on mount
   useEffect(() => {
@@ -196,9 +197,9 @@ export default function Dashboard() {
     <AppLayout pageTitle="Dashboard">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header with Jira Config */}
-        <Card className="p-6">
+        <Card className="bg-slate-50 p-6 rounded-xl shadow-sm border-slate-200">
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">Analytics Configuration</h2>
+            <h2 className="text-xl font-semibold text-foreground">Sprint Selection</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Project</label>
@@ -238,7 +239,7 @@ export default function Dashboard() {
         </Card>
 
         {/* Current Sprint Section */}
-        <Card className="p-6 bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+        <Card className="bg-slate-50 p-6 rounded-xl shadow-sm border-slate-200">
           <CardHeader className="p-0 pb-4">
             <CardTitle className="text-2xl text-foreground">Current Sprint</CardTitle>
           </CardHeader>
@@ -262,44 +263,64 @@ export default function Dashboard() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-foreground">
-                      Progress: {sprintData.completion_percentage}%
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {sprintData.completed_issues} / {sprintData.total_issues} issues completed
+                      Progress: {sprintData.completion_percent}% ({sprintData.completed_issues}/{sprintData.total_issues} issues completed)
                     </span>
                   </div>
-                  <Progress value={sprintData.completion_percentage} className="h-3" />
+                  <Progress value={sprintData.completion_percent} className="h-3" />
                 </div>
 
                 <div className="mt-6 space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground">Sprint Issues</h4>
-                  <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {sprintData.issues.map((issue) => (
-                      <Card
-                        key={issue.key}
-                        className={cn(
-                          "p-3 transition-all",
-                          issue.statusCategory === "done" && "bg-emerald-50 border-emerald-200"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <span className="text-sm font-medium text-primary">{issue.key}</span>
-                            <p className="text-sm text-foreground mt-1">{issue.summary}</p>
+                  <button
+                    onClick={() => setIsSprintIssuesExpanded(!isSprintIssuesExpanded)}
+                    className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:bg-slate-50 transition-all"
+                  >
+                    <h4 className="text-sm font-semibold text-foreground">Sprint Issues</h4>
+                    <ChevronDown
+                      className={cn(
+                        "h-5 w-5 text-muted-foreground transition-transform duration-300 ease-in-out",
+                        isSprintIssuesExpanded && "rotate-180"
+                      )}
+                    />
+                  </button>
+                  
+                  <div
+                    className={cn(
+                      "space-y-2 overflow-hidden transition-all duration-300 ease-in-out",
+                      isSprintIssuesExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                    )}
+                  >
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {sprintData.issues.map((issue) => (
+                        <Card
+                          key={issue.key}
+                          className="bg-white p-4 rounded-xl border border-slate-200 hover:shadow-md transition-all"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <a
+                                href={`https://your-domain.atlassian.net/browse/${issue.key}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm font-medium text-primary hover:underline"
+                              >
+                                {issue.key}
+                              </a>
+                              <p className="text-sm text-foreground mt-1">{issue.summary}</p>
+                            </div>
+                            <span
+                              className={cn(
+                                "px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap ml-4",
+                                issue.statusCategory === "done" && "bg-green-100 text-green-800",
+                                issue.statusCategory === "indeterminate" && "bg-blue-100 text-blue-800",
+                                issue.statusCategory === "new" && "bg-gray-100 text-gray-800"
+                              )}
+                            >
+                              {issue.status}
+                            </span>
                           </div>
-                          <span
-                            className={cn(
-                              "px-2 py-1 rounded text-xs font-medium",
-                              issue.statusCategory === "done" && "bg-emerald-100 text-emerald-700",
-                              issue.statusCategory === "indeterminate" && "bg-amber-100 text-amber-700",
-                              issue.statusCategory === "new" && "bg-blue-100 text-blue-700"
-                            )}
-                          >
-                            {issue.status}
-                          </span>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </>
@@ -330,7 +351,7 @@ export default function Dashboard() {
                 return (
                   <Card
                     key={epic.epic_key}
-                    className={cn("p-6 transition-all cursor-pointer hover:shadow-lg", colorClass)}
+                    className={cn("p-6 transition-all cursor-pointer hover:shadow-lg rounded-xl", colorClass)}
                     onClick={() => toggleEpic(epic.epic_key)}
                   >
                     <div className="space-y-4">
@@ -376,14 +397,14 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <Card className="p-8 text-center">
+            <Card className="bg-slate-50 p-8 rounded-xl shadow-sm text-center border-slate-200">
               <p className="text-muted-foreground">No epic data available</p>
             </Card>
           )}
         </div>
 
         {/* Navigation Shortcuts */}
-        <Card className="p-8 bg-gradient-to-br from-secondary/30 to-muted/30">
+        <Card className="p-8 bg-slate-50 rounded-xl shadow-sm border-slate-200">
           <h2 className="text-xl font-bold text-foreground mb-6 text-center">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Button
