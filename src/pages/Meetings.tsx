@@ -214,10 +214,17 @@ export default function Meetings() {
     if (!aiAnalysis) return;
     
     if (mode === 'demo') {
+      // Simulate success in demo mode
+      const updatedAnalysis = { ...aiAnalysis };
+      updatedAnalysis.analysis.actions[actionIndex] = {
+        ...updatedAnalysis.analysis.actions[actionIndex],
+        status: 'approved',
+        jira_created_key: 'DEMO-123'
+      };
+      setAiAnalysis(updatedAnalysis);
       toast({
         title: "Demo Mode",
-        description: "This is a demo in mock mode. No Jira actions will be performed.",
-        variant: "destructive"
+        description: "Simulated Jira creation: DEMO-123",
       });
       return;
     }
@@ -228,12 +235,14 @@ export default function Meetings() {
     try {
       if (action.action_type === 'create' || !action.jira_issue_key) {
         // Create new Jira issue
+        const description = `${action.description}\n\nAcceptance Criteria:\n${action.acceptance_criteria.map(c => `- ${c}`).join('\n')}`;
+        
         const createResponse = await fetch('http://localhost:8000/jira/issue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             summary: action.summary,
-            description: `${action.description}\n\nAcceptance Criteria:\n${action.acceptance_criteria.map(c => `- ${c}`).join('\n')}`,
+            description: description,
             issue_type: 'Story',
             project_key: 'PROJ',
             labels: ['planflow-ai', 'from-meeting'],
@@ -242,23 +251,30 @@ export default function Meetings() {
         });
 
         if (!createResponse.ok) {
-          throw new Error('Failed to create Jira issue');
+          const errorData = await createResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to create Jira issue');
         }
 
         const createData = await createResponse.json();
         const newKey = createData.key;
 
         // Link dependencies
-        for (const depKey of action.dependencies) {
-          await fetch('http://localhost:8000/jira/issue-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              inward_issue_key: depKey,
-              outward_issue_key: newKey,
-              link_type: 'Relates'
-            })
-          });
+        if (action.dependencies.length > 0) {
+          for (const depKey of action.dependencies) {
+            try {
+              await fetch('http://localhost:8000/jira/issue-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  inward_issue_key: depKey,
+                  outward_issue_key: newKey,
+                  link_type: 'Relates'
+                })
+              });
+            } catch (linkErr) {
+              console.warn(`Failed to link dependency ${depKey}:`, linkErr);
+            }
+          }
         }
 
         // Update local state
@@ -277,6 +293,8 @@ export default function Meetings() {
         });
       } else {
         // Update existing Jira issue
+        const description = `${action.description}\n\nAcceptance Criteria:\n${action.acceptance_criteria.map(c => `- ${c}`).join('\n')}`;
+        
         const updateResponse = await fetch(
           `http://localhost:8000/jira/issue/${action.jira_issue_key}`,
           {
@@ -284,27 +302,35 @@ export default function Meetings() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               summary: action.summary,
-              description: `${action.description}\n\nAcceptance Criteria:\n${action.acceptance_criteria.map(c => `- ${c}`).join('\n')}`,
-              labels: ['planflow-ai', 'updated-from-meeting']
+              description: description,
+              labels: ['planflow-ai', 'updated-from-meeting'],
+              priority: 'Medium'
             })
           }
         );
 
         if (!updateResponse.ok) {
-          throw new Error('Failed to update Jira issue');
+          const errorData = await updateResponse.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to update Jira issue');
         }
 
         // Link dependencies
-        for (const depKey of action.dependencies) {
-          await fetch('http://localhost:8000/jira/issue-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              inward_issue_key: depKey,
-              outward_issue_key: action.jira_issue_key,
-              link_type: 'Relates'
-            })
-          });
+        if (action.dependencies.length > 0) {
+          for (const depKey of action.dependencies) {
+            try {
+              await fetch('http://localhost:8000/jira/issue-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  inward_issue_key: depKey,
+                  outward_issue_key: action.jira_issue_key,
+                  link_type: 'Relates'
+                })
+              });
+            } catch (linkErr) {
+              console.warn(`Failed to link dependency ${depKey}:`, linkErr);
+            }
+          }
         }
 
         // Update local state
@@ -324,7 +350,7 @@ export default function Meetings() {
       console.error('Failed to process Jira action', err);
       toast({
         title: "Jira Action Failed",
-        description: "Could not process the Jira action. Please try again.",
+        description: err instanceof Error ? err.message : "Could not process the Jira action. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -337,6 +363,10 @@ export default function Meetings() {
     const updatedAnalysis = { ...aiAnalysis };
     updatedAnalysis.analysis.actions[actionIndex].status = 'rejected';
     setAiAnalysis(updatedAnalysis);
+    toast({
+      title: "Action Rejected",
+      description: "This action has been rejected and will not be sent to Jira."
+    });
   };
 
   const updateActionField = (actionIndex: number, field: keyof AIAction, value: any) => {
@@ -424,124 +454,160 @@ export default function Meetings() {
               </Card>
             )}
 
-            {aiAnalysis && (
+                {aiAnalysis && (
               <>
                 {/* AI Sprint Actions Section */}
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4">AI Sprint Actions</h3>
                   <div className="space-y-4">
-                    {aiAnalysis.analysis.actions.map((action, idx) => (
+                    {aiAnalysis.analysis.actions.filter(a => a.status !== 'rejected').map((action, idx) => (
                       <Card key={idx} className="p-4 border-2" style={{
-                        borderColor: action.status === 'approved' ? 'hsl(var(--primary))' : 
-                                    action.status === 'rejected' ? 'hsl(var(--destructive))' : 
-                                    'hsl(var(--border))'
+                        borderColor: action.status === 'approved' ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                        opacity: action.status === 'rejected' ? 0.5 : 1
                       }}>
-                        <div className="space-y-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Badge variant={action.action_type === 'create' ? 'default' : 'secondary'}>
-                                  {action.action_type === 'create' ? 'Create Ticket' : 'Update Ticket'}
-                                </Badge>
-                                {action.jira_issue_key && (
-                                  <a
-                                    href={`https://your-jira-instance.atlassian.net/browse/${action.jira_issue_key}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-primary hover:underline"
-                                  >
-                                    {action.jira_issue_key}
-                                  </a>
-                                )}
-                                {action.jira_created_key && (
-                                  <Badge variant="outline" className="bg-green-50">
-                                    Created: {action.jira_created_key}
-                                  </Badge>
-                                )}
-                                <Badge variant="outline">
-                                  {action.status}
-                                </Badge>
+                        <div className="space-y-4">
+                          {/* Header with badges */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={action.action_type === 'create' ? 'default' : 'secondary'}>
+                              {action.action_type === 'create' ? 'Create Ticket' : 'Update Existing Ticket'}
+                            </Badge>
+                            {action.jira_issue_key && !action.jira_created_key && (
+                              <span className="text-sm text-muted-foreground">
+                                Issue: <a
+                                  href={`https://your-jira-instance.atlassian.net/browse/${action.jira_issue_key}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline"
+                                >
+                                  {action.jira_issue_key}
+                                </a>
+                              </span>
+                            )}
+                            {action.jira_created_key && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                Approved – Created {action.jira_created_key}
+                              </Badge>
+                            )}
+                            {action.status === 'approved' && !action.jira_created_key && action.jira_issue_key && (
+                              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300">
+                                Approved – Updated {action.jira_issue_key}
+                              </Badge>
+                            )}
+                          </div>
+                          
+                          {/* Form fields */}
+                          {editingAction === idx ? (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Summary</label>
+                                <Input
+                                  value={action.summary}
+                                  onChange={(e) => updateActionField(idx, 'summary', e.target.value)}
+                                  placeholder="Enter summary"
+                                />
                               </div>
-                              
-                              {editingAction === idx ? (
-                                <div className="space-y-2">
-                                  <Input
-                                    value={action.summary}
-                                    onChange={(e) => updateActionField(idx, 'summary', e.target.value)}
-                                    placeholder="Summary"
-                                  />
-                                  <Textarea
-                                    value={action.description}
-                                    onChange={(e) => updateActionField(idx, 'description', e.target.value)}
-                                    placeholder="Description"
-                                    rows={3}
-                                  />
-                                  <Textarea
-                                    value={action.acceptance_criteria.join('\n')}
-                                    onChange={(e) => updateActionField(idx, 'acceptance_criteria', e.target.value.split('\n'))}
-                                    placeholder="Acceptance Criteria (one per line)"
-                                    rows={3}
-                                  />
-                                  <Input
-                                    value={action.target_sprint}
-                                    onChange={(e) => updateActionField(idx, 'target_sprint', e.target.value)}
-                                    placeholder="Target Sprint"
-                                  />
-                                  <Input
-                                    value={action.dependencies.join(', ')}
-                                    onChange={(e) => updateActionField(idx, 'dependencies', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-                                    placeholder="Dependencies (comma-separated Jira keys)"
-                                  />
-                                  <Input
-                                    value={action.assignee}
-                                    onChange={(e) => updateActionField(idx, 'assignee', e.target.value)}
-                                    placeholder="Assignee"
-                                  />
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Description</label>
+                                <Textarea
+                                  value={action.description}
+                                  onChange={(e) => updateActionField(idx, 'description', e.target.value)}
+                                  placeholder="Enter description"
+                                  rows={3}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Acceptance Criteria</label>
+                                <Textarea
+                                  value={action.acceptance_criteria.join('\n')}
+                                  onChange={(e) => updateActionField(idx, 'acceptance_criteria', e.target.value.split('\n').filter(Boolean))}
+                                  placeholder="One criterion per line"
+                                  rows={4}
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Target Sprint</label>
+                                <Input
+                                  value={action.target_sprint}
+                                  onChange={(e) => updateActionField(idx, 'target_sprint', e.target.value)}
+                                  placeholder="e.g., Sprint 21"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Dependencies</label>
+                                <Input
+                                  value={action.dependencies.join(', ')}
+                                  onChange={(e) => updateActionField(idx, 'dependencies', e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                                  placeholder="Comma-separated Jira keys (e.g., PROJ-1, PROJ-2)"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium mb-1 block">Assignee</label>
+                                <Input
+                                  value={action.assignee}
+                                  onChange={(e) => updateActionField(idx, 'assignee', e.target.value)}
+                                  placeholder="Enter assignee name"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs font-semibold text-muted-foreground">Summary</label>
+                                <p className="text-sm font-medium mt-0.5">{action.summary}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-muted-foreground">Description</label>
+                                <p className="text-sm mt-0.5">{action.description}</p>
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-muted-foreground">Acceptance Criteria</label>
+                                <ul className="list-disc list-inside space-y-1 mt-0.5">
+                                  {action.acceptance_criteria.map((criteria, cidx) => (
+                                    <li key={cidx} className="text-sm">{criteria}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-xs font-semibold text-muted-foreground">Target Sprint</label>
+                                  <p className="text-sm mt-0.5">{action.target_sprint}</p>
                                 </div>
-                              ) : (
-                                <div className="space-y-2">
-                                  <h4 className="font-medium">{action.summary}</h4>
-                                  <p className="text-sm text-muted-foreground">{action.description}</p>
-                                  <div>
-                                    <p className="text-xs font-semibold text-muted-foreground mb-1">Acceptance Criteria:</p>
-                                    <ul className="list-disc list-inside space-y-1">
-                                      {action.acceptance_criteria.map((criteria, cidx) => (
-                                        <li key={cidx} className="text-sm">{criteria}</li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                  <div className="flex items-center gap-4 text-sm">
-                                    <span><strong>Sprint:</strong> {action.target_sprint}</span>
-                                    <span><strong>Assignee:</strong> {action.assignee}</span>
-                                    {action.dependencies.length > 0 && (
-                                      <span><strong>Dependencies:</strong> {action.dependencies.join(', ')}</span>
-                                    )}
-                                  </div>
+                                <div>
+                                  <label className="text-xs font-semibold text-muted-foreground">Assignee</label>
+                                  <p className="text-sm mt-0.5">{action.assignee}</p>
+                                </div>
+                              </div>
+                              {action.dependencies.length > 0 && (
+                                <div>
+                                  <label className="text-xs font-semibold text-muted-foreground">Dependencies</label>
+                                  <p className="text-sm mt-0.5">{action.dependencies.join(', ')}</p>
                                 </div>
                               )}
                             </div>
-                          </div>
+                          )}
                           
-                          <div className="flex gap-2">
+                          {/* Action buttons */}
+                          <div className="flex gap-2 pt-2">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => setEditingAction(editingAction === idx ? null : idx)}
+                              disabled={action.status === 'approved'}
                             >
-                              {editingAction === idx ? 'Save' : 'Edit'}
+                              {editingAction === idx ? 'Done Editing' : 'Edit'}
                             </Button>
                             <Button
                               size="sm"
                               onClick={() => handleApproveAction(idx)}
                               disabled={action.status === 'approved' || analyzingLoading}
                             >
-                              Approve
+                              {analyzingLoading ? 'Applying...' : 'Approve'}
                             </Button>
                             <Button
                               size="sm"
                               variant="destructive"
                               onClick={() => handleRejectAction(idx)}
-                              disabled={action.status === 'rejected'}
+                              disabled={action.status === 'approved'}
                             >
                               Reject
                             </Button>
