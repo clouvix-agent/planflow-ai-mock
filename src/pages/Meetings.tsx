@@ -342,7 +342,8 @@ export default function Meetings() {
             issue_type: 'Story',
             project_key: selectedProjectKey || 'PROJ',
             labels: ['planflow-ai', 'from-meeting'],
-            priority: 'Medium'
+            priority: 'Medium',
+            sprint_id: selectedSprintId ?? null
           })
         });
 
@@ -400,7 +401,8 @@ export default function Meetings() {
               summary: action.summary,
               description: description,
               labels: ['planflow-ai', 'updated-from-meeting'],
-              priority: 'Medium'
+              priority: 'Medium',
+              sprint_id: selectedSprintId ?? null
             })
           }
         );
