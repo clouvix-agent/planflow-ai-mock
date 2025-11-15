@@ -85,36 +85,44 @@ export default function Dashboard() {
 
   const fetchProjects = async () => {
     try {
+      console.log("Fetching projects from: http://localhost:8000/jira/projects");
       const resp = await fetch("http://localhost:8000/jira/projects");
+      console.log("Projects response status:", resp.status);
       if (!resp.ok) throw new Error("Failed to fetch projects");
       const data = await resp.json();
+      console.log("Projects data:", data);
       setProjects(data.projects || []);
       if (data.projects?.length > 0) {
         setSelectedProjectKey(data.projects[0].key);
       }
     } catch (error) {
+      console.error("Error fetching projects:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch Jira projects",
+        description: `Could not fetch Jira projects: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
   };
 
   const fetchBoards = async (projectKey: string) => {
     try {
+      console.log(`Fetching boards for project: ${projectKey}`);
       const resp = await fetch(`http://localhost:8000/jira/boards?project_key=${projectKey}`);
+      console.log("Boards response status:", resp.status);
       if (!resp.ok) throw new Error("Failed to fetch boards");
       const data = await resp.json();
+      console.log("Boards data:", data);
       setBoards(data.boards || []);
       if (data.boards?.length > 0) {
         setSelectedBoardId(data.boards[0].id);
       }
     } catch (error) {
+      console.error("Error fetching boards:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch Jira boards",
+        description: `Could not fetch Jira boards: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
     }
   };
@@ -123,17 +131,21 @@ export default function Dashboard() {
     if (!selectedBoardId || !selectedProjectKey) return;
     setLoadingSprint(true);
     try {
+      console.log(`Fetching sprint data: board_id=${selectedBoardId}, project_key=${selectedProjectKey}`);
       const resp = await fetch(
         `http://localhost:8000/dashboard/current_sprint?board_id=${selectedBoardId}&project_key=${selectedProjectKey}`
       );
+      console.log("Sprint data response status:", resp.status);
       if (!resp.ok) throw new Error("Failed to fetch sprint data");
       const data = await resp.json();
+      console.log("Sprint data:", data);
       setSprintData(data);
     } catch (error) {
+      console.error("Error fetching sprint data:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch current sprint data",
+        description: `Could not fetch current sprint data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
       setSprintData(null);
     } finally {
@@ -145,15 +157,19 @@ export default function Dashboard() {
     if (!selectedProjectKey) return;
     setLoadingEpics(true);
     try {
+      console.log(`Fetching epic data for project: ${selectedProjectKey}`);
       const resp = await fetch(`http://localhost:8000/dashboard/epic_progress?project_key=${selectedProjectKey}`);
+      console.log("Epic data response status:", resp.status);
       if (!resp.ok) throw new Error("Failed to fetch epic data");
       const data = await resp.json();
+      console.log("Epic data:", data);
       setEpicData(data.epics || []);
     } catch (error) {
+      console.error("Error fetching epic data:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not fetch epic progress data",
+        description: `Could not fetch epic progress data: ${error instanceof Error ? error.message : 'Unknown error'}`,
       });
       setEpicData([]);
     } finally {
