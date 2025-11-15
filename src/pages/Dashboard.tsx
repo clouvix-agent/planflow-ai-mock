@@ -91,9 +91,10 @@ export default function Dashboard() {
       if (!resp.ok) throw new Error("Failed to fetch projects");
       const data = await resp.json();
       console.log("Projects data:", data);
-      setProjects(data.projects || []);
-      if (data.projects?.length > 0) {
-        setSelectedProjectKey(data.projects[0].key);
+      const values = data.values || [];
+      setProjects(values);
+      if (values.length > 0) {
+        setSelectedProjectKey(values[0].key);
       }
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -113,9 +114,10 @@ export default function Dashboard() {
       if (!resp.ok) throw new Error("Failed to fetch boards");
       const data = await resp.json();
       console.log("Boards data:", data);
-      setBoards(data.boards || []);
-      if (data.boards?.length > 0) {
-        setSelectedBoardId(data.boards[0].id);
+      const values = data.values || [];
+      setBoards(values);
+      if (values.length > 0) {
+        setSelectedBoardId(values[0].id);
       }
     } catch (error) {
       console.error("Error fetching boards:", error);
