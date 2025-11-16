@@ -143,16 +143,15 @@ export default function Dashboard() {
       const data = await resp.json();
       console.log("Dashboard overview:", data);
       
-      // Normalize sprint data - handle both nested and top-level structures
-      const sprintSource = data.current_sprint || data;
+      // Normalize sprint data from /dashboard/overview response
       const normalizedSprintData: CurrentSprintData = {
-        sprint_name: sprintSource.sprint_name || "",
-        start_date: sprintSource.start_date || "",
-        end_date: sprintSource.end_date || "",
-        completion_percent: sprintSource.completion_percent ?? 0,
-        completed_issues: sprintSource.completed_issues ?? 0,
-        total_issues: sprintSource.total_issues ?? sprintSource.issues?.length ?? 0,
-        issues: sprintSource.issues || [],
+        sprint_name: data.current_sprint?.name ?? "",
+        start_date: data.current_sprint?.start_date ?? "",
+        end_date: data.current_sprint?.end_date ?? "",
+        completion_percent: data.current_sprint?.completion_percent ?? 0,
+        completed_issues: data.current_sprint?.completed_issues ?? 0,
+        total_issues: data.current_sprint?.total_issues ?? (data.current_sprint?.issues?.length ?? 0),
+        issues: data.current_sprint?.issues ?? [],
       };
       
       setSprintData(normalizedSprintData);
