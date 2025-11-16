@@ -136,13 +136,26 @@ export default function Dashboard() {
     try {
       console.log(`Fetching sprint data: board_id=${selectedBoardId}, project_key=${selectedProjectKey}`);
       const resp = await fetch(
-        `http://localhost:8000/dashboard/current_sprint?board_id=${selectedBoardId}&project_key=${selectedProjectKey}`
+        `http://localhost:8000/dashboard/overview?board_id=${selectedBoardId}&project_key=${selectedProjectKey}`
       );
       console.log("Sprint data response status:", resp.status);
       if (!resp.ok) throw new Error("Failed to fetch sprint data");
       const data = await resp.json();
-      console.log("Sprint data:", data);
-      setSprintData(data);
+      console.log("Dashboard overview:", data);
+      
+      // Normalize sprint data - handle both nested and top-level structures
+      const sprintSource = data.current_sprint || data;
+      const normalizedSprintData: CurrentSprintData = {
+        sprint_name: sprintSource.sprint_name || "",
+        start_date: sprintSource.start_date || "",
+        end_date: sprintSource.end_date || "",
+        completion_percent: sprintSource.completion_percent ?? 0,
+        completed_issues: sprintSource.completed_issues ?? 0,
+        total_issues: sprintSource.total_issues ?? sprintSource.issues?.length ?? 0,
+        issues: sprintSource.issues || [],
+      };
+      
+      setSprintData(normalizedSprintData);
     } catch (error) {
       console.error("Error fetching sprint data:", error);
       toast({
