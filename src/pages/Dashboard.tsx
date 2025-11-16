@@ -40,7 +40,7 @@ interface CurrentSprintData {
 interface EpicProgress {
   epic_key: string;
   epic_name: string;
-  completion_percentage: number;
+  completion_percent: number;
   total_stories: number;
   completed_stories: number;
 }
@@ -428,7 +428,7 @@ export default function Dashboard() {
                           </div>
                           <h3 className="text-lg font-semibold text-foreground">{epic.epic_name}</h3>
                         </div>
-                        <span className="text-2xl font-bold text-primary">{epic.completion_percentage}%</span>
+                        <span className="text-2xl font-bold text-primary">{epic.completion_percent}%</span>
                       </div>
 
                       <div className="space-y-2">
@@ -440,7 +440,7 @@ export default function Dashboard() {
                         <div className="relative h-4 bg-white/50 rounded-full overflow-hidden">
                           <div
                             className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                            style={{ width: `${epic.completion_percentage}%` }}
+                            style={{ width: `${epic.completion_percent}%` }}
                           />
                         </div>
                       </div>
