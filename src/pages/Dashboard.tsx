@@ -62,6 +62,8 @@ export default function Dashboard() {
 
   // Expanded epics state
   const [expandedEpics, setExpandedEpics] = useState<Record<string, boolean>>({});
+  const [epicStories, setEpicStories] = useState<Record<string, any[]>>({});
+  const [loadingEpicStories, setLoadingEpicStories] = useState<Record<string, boolean>>({});
   const [isSprintIssuesExpanded, setIsSprintIssuesExpanded] = useState(false);
 
   // Fetch projects on mount
@@ -192,8 +194,45 @@ export default function Dashboard() {
     }
   };
 
-  const toggleEpic = (epicKey: string) => {
-    setExpandedEpics((prev) => ({ ...prev, [epicKey]: !prev[epicKey] }));
+  const toggleEpic = async (epicKey: string) => {
+    const isCurrentlyExpanded = expandedEpics[epicKey];
+    
+    setExpandedEpics((prev) => ({
+      ...prev,
+      [epicKey]: !prev[epicKey],
+    }));
+
+    // Fetch stories when expanding and they haven't been loaded yet
+    if (!isCurrentlyExpanded && !epicStories[epicKey]) {
+      await fetchEpicStories(epicKey);
+    }
+  };
+
+  const fetchEpicStories = async (epicKey: string) => {
+    setLoadingEpicStories((prev) => ({ ...prev, [epicKey]: true }));
+    try {
+      const resp = await fetch(`http://localhost:8000/dashboard/epic_stories?epic_key=${epicKey}`);
+      if (!resp.ok) throw new Error("Failed to fetch epic stories");
+      const data = await resp.json();
+      
+      setEpicStories((prev) => ({
+        ...prev,
+        [epicKey]: data.stories || [],
+      }));
+    } catch (error) {
+      console.error(`Error fetching stories for epic ${epicKey}:`, error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Could not fetch stories for ${epicKey}`,
+      });
+      setEpicStories((prev) => ({
+        ...prev,
+        [epicKey]: [],
+      }));
+    } finally {
+      setLoadingEpicStories((prev) => ({ ...prev, [epicKey]: false }));
+    }
   };
 
   const epicColors = [
@@ -397,10 +436,51 @@ export default function Dashboard() {
                       </div>
 
                       {isExpanded && (
-                        <div className="pt-4 border-t border-border/50">
-                          <p className="text-sm text-muted-foreground italic">
-                            Story details coming soon...
-                          </p>
+                        <div className="pt-4 border-t border-border/50 space-y-3">
+                          {loadingEpicStories[epic.epic_key] ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-16 w-full" />
+                              <Skeleton className="h-16 w-full" />
+                            </div>
+                          ) : epicStories[epic.epic_key]?.length > 0 ? (
+                            <div className="space-y-2 max-h-80 overflow-y-auto">
+                              {epicStories[epic.epic_key].map((story: any) => (
+                                <Card
+                                  key={story.key}
+                                  className="bg-white p-3 rounded-lg border border-slate-200 hover:shadow-md transition-all"
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <a
+                                        href={`https://your-domain.atlassian.net/browse/${story.key}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-medium text-primary hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {story.key}
+                                      </a>
+                                      <p className="text-sm text-foreground mt-1">{story.summary}</p>
+                                    </div>
+                                    <span
+                                      className={cn(
+                                        "px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap ml-4",
+                                        story.status_category_key === "done" && "bg-green-100 text-green-800",
+                                        story.status_category_key === "indeterminate" && "bg-blue-100 text-blue-800",
+                                        story.status_category_key === "new" && "bg-gray-100 text-gray-800"
+                                      )}
+                                    >
+                                      {story.status}
+                                    </span>
+                                  </div>
+                                </Card>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground italic">
+                              No stories found for this epic
+                            </p>
+                          )}
                         </div>
                       )}
                     </div>
