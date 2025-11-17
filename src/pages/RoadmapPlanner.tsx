@@ -442,26 +442,26 @@ export default function RoadmapPlanner() {
           <div className="space-y-6">
             {roadmapPlan.quarters.map((quarter, qIdx) => (
               <Card key={quarter.quarter} className={cn("overflow-hidden border rounded-xl", quarterBgClass(quarter.quarter))}>
-                <CardHeader className="cursor-pointer" onClick={() => setExpandedQuarters((prev) => ({ ...prev, [quarter.quarter]: !(prev[quarter.quarter] ?? true) }))}>
+                <CardHeader className="cursor-pointer" onClick={() => setExpandedQuarters((prev) => ({ ...prev, [quarter.quarter]: !(prev[quarter.quarter] ?? false) }))}>
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-2xl">{quarter.quarter}</CardTitle>
                       <CardDescription className="mt-1">{quarter.quarter_goal}</CardDescription>
                     </div>
                     <Button variant="ghost" size="sm">
-                      {(expandedQuarters[quarter.quarter] ?? true) ? <ChevronDown /> : <ChevronRight />}
+                      {(expandedQuarters[quarter.quarter] ?? false) ? <ChevronDown /> : <ChevronRight />}
                     </Button>
                   </div>
                 </CardHeader>
 
-                {(expandedQuarters[quarter.quarter] ?? true) && (
+                {(expandedQuarters[quarter.quarter] ?? false) && (
                   <CardContent className="space-y-4">
                     {quarter.epics.map((epic, eIdx) => {
                       const epicKey = epic.epic_temp_id;
                       const isEditing = editingEpics[epicKey];
                       const isRejected = epic.status === "rejected";
                       const isApproved = epic.status === "approved";
-                      const isExpanded = expandedEpicIds[epicKey] ?? true;
+                      const isExpanded = expandedEpicIds[epicKey] ?? false;
 
                       return (
                         <Card key={epic.epic_temp_id} className={cn("rounded-xl bg-white/80 dark:bg-slate-900/80 border shadow-sm", isApproved && "border-l-4 border-l-emerald-400", isRejected && "opacity-50")}>
