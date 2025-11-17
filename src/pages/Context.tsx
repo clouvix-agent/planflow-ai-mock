@@ -20,7 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { mockPRDs, PRD } from "@/data/mockPRDs";
 
 const LABEL_OPTIONS = [
@@ -180,7 +180,17 @@ export default function Context() {
         {/* Right: Preview */}
         {previewPRD && (
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Preview</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Preview</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPreviewPRD(null)}
+                className="h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
             <div className="space-y-4">
               <div>
                 <h4 className="text-xl font-bold">{previewPRD.title}</h4>
