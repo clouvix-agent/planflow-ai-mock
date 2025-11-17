@@ -39,7 +39,7 @@ export default function Context() {
   const [previewPRD, setPreviewPRD] = useState<PRD | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | null>(null);
+  const [prdLabels, setPrdLabels] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -93,12 +93,9 @@ export default function Context() {
     }
   };
 
-  const filteredPrds = selectedLabelFilter
-    ? prds.filter(prd => prd.labels.some(label => 
-        label.toLowerCase().includes(selectedLabelFilter.toLowerCase()) ||
-        selectedLabelFilter === "Others"
-      ))
-    : prds;
+  const handleLabelChange = (prdId: string, label: string) => {
+    setPrdLabels(prev => ({ ...prev, [prdId]: label }));
+  };
 
   return (
     <AppLayout pageTitle="Context (PRDs)">
@@ -123,33 +120,12 @@ export default function Context() {
               <TableRow>
                 <TableHead className="w-12">Use</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-2">
-                    <span>Labels</span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 px-2">
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start">
-                        <DropdownMenuItem onClick={() => setSelectedLabelFilter(null)}>
-                          <span className={!selectedLabelFilter ? "font-semibold" : ""}>All</span>
-                        </DropdownMenuItem>
-                        {LABEL_OPTIONS.map((label) => (
-                          <DropdownMenuItem key={label} onClick={() => setSelectedLabelFilter(label)}>
-                            <span className={selectedLabelFilter === label ? "font-semibold" : ""}>{label}</span>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </TableHead>
+                <TableHead>Labels</TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredPrds.map((prd) => (
+              {prds.map((prd) => (
                 <TableRow key={prd.id}>
                   <TableCell>
                     <Checkbox
@@ -159,25 +135,29 @@ export default function Context() {
                   </TableCell>
                   <TableCell className="font-medium">{prd.title}</TableCell>
                   <TableCell>
-                    {prd.labels.length > 0 ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" className="gap-2">
-                            {prd.labels.length} {prd.labels.length === 1 ? 'Label' : 'Labels'}
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start">
-                          {prd.labels.map((label) => (
-                            <DropdownMenuItem key={label}>
-                              <Badge variant="secondary">{label}</Badge>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    ) : (
-                      <span className="text-muted-foreground text-sm">No labels</span>
-                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2 w-full justify-between">
+                          <span className="truncate">
+                            {prdLabels[prd.id] || "Select label"}
+                          </span>
+                          <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[280px]">
+                        {LABEL_OPTIONS.map((label) => (
+                          <DropdownMenuItem 
+                            key={label} 
+                            onClick={() => handleLabelChange(prd.id, label)}
+                            className="cursor-pointer"
+                          >
+                            <span className={prdLabels[prd.id] === label ? "font-semibold" : ""}>
+                              {label}
+                            </span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                   <TableCell>
                     <Button
