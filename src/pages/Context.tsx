@@ -23,6 +23,15 @@ import {
 import { ChevronDown } from "lucide-react";
 import { mockPRDs, PRD } from "@/data/mockPRDs";
 
+const LABEL_OPTIONS = [
+  "Product Requirements Document (PRD)",
+  "Roadmap",
+  "Feature Details",
+  "Customer Interviews",
+  "User Journey Flows",
+  "Others"
+];
+
 export default function Context() {
   const { mode } = useAuth();
   const { selectedContextPages, togglePageSelection, isPageSelected } = useContextPages();
@@ -30,6 +39,7 @@ export default function Context() {
   const [previewPRD, setPreviewPRD] = useState<PRD | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLabelFilter, setSelectedLabelFilter] = useState<string | null>(null);
 
   useEffect(() => {
     if (mode === 'demo') {
@@ -83,6 +93,13 @@ export default function Context() {
     }
   };
 
+  const filteredPrds = selectedLabelFilter
+    ? prds.filter(prd => prd.labels.some(label => 
+        label.toLowerCase().includes(selectedLabelFilter.toLowerCase()) ||
+        selectedLabelFilter === "Others"
+      ))
+    : prds;
+
   return (
     <AppLayout pageTitle="Context (PRDs)">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -106,12 +123,33 @@ export default function Context() {
               <TableRow>
                 <TableHead className="w-12">Use</TableHead>
                 <TableHead>Title</TableHead>
-                <TableHead>Labels</TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-2">
+                    <span>Labels</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-7 px-2">
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start">
+                        <DropdownMenuItem onClick={() => setSelectedLabelFilter(null)}>
+                          <span className={!selectedLabelFilter ? "font-semibold" : ""}>All</span>
+                        </DropdownMenuItem>
+                        {LABEL_OPTIONS.map((label) => (
+                          <DropdownMenuItem key={label} onClick={() => setSelectedLabelFilter(label)}>
+                            <span className={selectedLabelFilter === label ? "font-semibold" : ""}>{label}</span>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </TableHead>
                 <TableHead className="w-24">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {prds.map((prd) => (
+              {filteredPrds.map((prd) => (
                 <TableRow key={prd.id}>
                   <TableCell>
                     <Checkbox
