@@ -14,6 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 import { mockPRDs, PRD } from "@/data/mockPRDs";
 
 export default function Context() {
@@ -80,7 +87,7 @@ export default function Context() {
     <AppLayout pageTitle="Context (PRDs)">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: PRD Table */}
-        <Card className="p-6">
+        <Card className="p-6" style={{ gridColumn: previewPRD ? '1' : '1 / -1' }}>
           <h3 className="text-lg font-semibold mb-4">Confluence Documents</h3>
           {selectedContextPages.length > 0 && (
             <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -114,13 +121,25 @@ export default function Context() {
                   </TableCell>
                   <TableCell className="font-medium">{prd.title}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {prd.labels.map((label) => (
-                        <Badge key={label} variant="secondary">
-                          {label}
-                        </Badge>
-                      ))}
-                    </div>
+                    {prd.labels.length > 0 ? (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            {prd.labels.length} {prd.labels.length === 1 ? 'Label' : 'Labels'}
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                          {prd.labels.map((label) => (
+                            <DropdownMenuItem key={label}>
+                              <Badge variant="secondary">{label}</Badge>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    ) : (
+                      <span className="text-muted-foreground text-sm">No labels</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -140,10 +159,10 @@ export default function Context() {
           </div>
         </Card>
 
-        {/* Right: PRD Preview */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">PRD Preview</h3>
-          {previewPRD ? (
+        {/* Right: Preview */}
+        {previewPRD && (
+          <Card className="p-6">
+            <h3 className="text-lg font-semibold mb-4">Preview</h3>
             <div className="space-y-4">
               <div>
                 <h4 className="text-xl font-bold">{previewPRD.title}</h4>
@@ -162,12 +181,8 @@ export default function Context() {
                 dangerouslySetInnerHTML={{ __html: previewPRD.content || "" }}
               />
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-muted-foreground">
-              Select a document to preview
-            </div>
-          )}
-        </Card>
+          </Card>
+        )}
       </div>
     </AppLayout>
   );
