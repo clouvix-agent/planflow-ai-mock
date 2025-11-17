@@ -62,7 +62,7 @@ export default function RoadmapPlanner() {
   const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
   const [roadmapPages, setRoadmapPages] = useState<Array<{ id: string; title: string }>>([]);
   const [selectedRoadmapPageId, setSelectedRoadmapPageId] = useState<string>("");
-  const [selectedQuarters, setSelectedQuarters] = useState<string[]>(["Q1", "Q2", "Q3", "Q4"]);
+  const [selectedQuarters, setSelectedQuarters] = useState<string[]>(["Q1"]);
   const [roadmapPlan, setRoadmapPlan] = useState<RoadmapPlan | null>(null);
   const [generating, setGenerating] = useState(false);
   const [expandedQuarters, setExpandedQuarters] = useState<Record<string, boolean>>({});
