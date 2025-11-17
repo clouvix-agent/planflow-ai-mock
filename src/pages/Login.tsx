@@ -35,7 +35,7 @@ export default function Login() {
 
           <div className="text-sm text-muted-foreground bg-muted p-4 rounded-md space-y-1">
             <p><strong>Username:</strong> test, <strong>Password:</strong> test for backend connection</p>
-            <p><strong>Login as Demo</strong> for working mockup</p>
+            <p><strong>Login as Demo</strong> (without username and password) for working mockup</p>
           </div>
 
           <div className="space-y-4">
