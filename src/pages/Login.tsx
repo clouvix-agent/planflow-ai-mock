@@ -33,6 +33,11 @@ export default function Login() {
             <p className="text-muted-foreground">AI-assisted Sprint Planning & PBR</p>
           </div>
 
+          <div className="text-sm text-muted-foreground bg-muted p-4 rounded-md space-y-1">
+            <p><strong>Username:</strong> test, <strong>Password:</strong> test for backend connection</p>
+            <p><strong>Login as Demo</strong> for working mockup</p>
+          </div>
+
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
