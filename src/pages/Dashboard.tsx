@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "@/hooks/use-toast";
 import { Calendar, FileText, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -256,16 +257,16 @@ export default function Dashboard() {
 
   return (
     <AppLayout pageTitle="Dashboard">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header with Jira Config */}
-        <Card className="bg-slate-50 p-6 rounded-xl shadow-sm border-slate-200">
+        <Card className="p-6">
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-foreground">Sprint Selection</h2>
+            <h2 className="text-lg font-semibold text-foreground">Sprint Selection</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Project</label>
                 <Select value={selectedProjectKey} onValueChange={setSelectedProjectKey}>
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -283,7 +284,7 @@ export default function Dashboard() {
                   value={selectedBoardId?.toString() || ""}
                   onValueChange={(val) => setSelectedBoardId(Number(val))}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background">
                     <SelectValue placeholder="Select board" />
                   </SelectTrigger>
                   <SelectContent>
@@ -300,11 +301,11 @@ export default function Dashboard() {
         </Card>
 
         {/* Current Sprint Section */}
-        <Card className="bg-slate-50 p-6 rounded-xl shadow-sm border-slate-200">
-          <CardHeader className="p-0 pb-4">
+        <Card className="p-6">
+          <CardHeader className="p-0 pb-6">
             <CardTitle className="text-2xl text-foreground">Current Sprint</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 space-y-4">
+          <CardContent className="p-0 space-y-6">
             {loadingSprint ? (
               <div className="space-y-3">
                 <Skeleton className="h-6 w-1/2" />
@@ -315,30 +316,34 @@ export default function Dashboard() {
               <>
                 <div className="space-y-2">
                   <h3 className="text-xl font-semibold text-foreground">{sprintData.sprint_name}</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
                     {new Date(sprintData.start_date).toLocaleDateString()} →{" "}
                     {new Date(sprintData.end_date).toLocaleDateString()}
                   </p>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium text-foreground">
-                      Progress: {sprintData.completion_percent ?? 0}% ({sprintData.completed_issues ?? 0}/{sprintData.total_issues ?? 0} issues completed)
+                      Progress: {sprintData.completion_percent ?? 0}%
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {sprintData.completed_issues ?? 0}/{sprintData.total_issues ?? 0} issues
                     </span>
                   </div>
-                  <Progress value={sprintData.completion_percent ?? 0} className="h-3" />
+                  <Progress value={sprintData.completion_percent ?? 0} className="h-2" />
                 </div>
 
                 <div className="mt-6 space-y-3">
                   <button
                     onClick={() => setIsSprintIssuesExpanded(!isSprintIssuesExpanded)}
-                    className="w-full flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:bg-slate-50 transition-all"
+                    className="w-full flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-all duration-200"
                   >
-                    <h4 className="text-sm font-semibold text-foreground">Sprint Issues</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Sprint Issues ({sprintData.issues.length})</h4>
                     <ChevronDown
                       className={cn(
-                        "h-5 w-5 text-muted-foreground transition-transform duration-300 ease-in-out",
+                        "h-5 w-5 text-muted-foreground transition-transform duration-300",
                         isSprintIssuesExpanded && "rotate-180"
                       )}
                     />
@@ -346,18 +351,18 @@ export default function Dashboard() {
                   
                   <div
                     className={cn(
-                      "space-y-2 overflow-hidden transition-all duration-300 ease-in-out",
-                      isSprintIssuesExpanded ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+                      "space-y-2 overflow-hidden transition-all duration-300",
+                      isSprintIssuesExpanded ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
                     )}
                   >
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                    <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
                       {sprintData.issues.map((issue) => (
                         <Card
                           key={issue.key}
-                          className="bg-white p-4 rounded-xl border border-slate-200 hover:shadow-md transition-all"
+                          className="p-4 bg-background hover:shadow-premium transition-all duration-200"
                         >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex-1 min-w-0">
                               <a
                                 href={`https://your-domain.atlassian.net/browse/${issue.key}`}
                                 target="_blank"
@@ -366,22 +371,13 @@ export default function Dashboard() {
                               >
                                 {issue.key}
                               </a>
-                              <p className="text-sm text-foreground mt-1">{issue.summary}</p>
+                              <p className="text-sm text-foreground mt-1 line-clamp-2">{issue.summary}</p>
                             </div>
-                            <span
-                              className={cn(
-                                "px-3 py-1 rounded-lg text-xs font-medium whitespace-nowrap ml-4",
-                                issue.statusCategory === "done" && "bg-green-100 text-green-800",
-                                issue.statusCategory === "indeterminate" && "bg-blue-100 text-blue-800",
-                                issue.statusCategory === "new" && "bg-gray-100 text-gray-800"
-                              )}
-                            >
-                              {issue.status}
-                            </span>
+                            <StatusBadge status={issue.status} statusCategory={issue.statusCategory} />
                           </div>
                         </Card>
                       ))}
-                    </div>
+                     </div>
                   </div>
                 </div>
               </>
@@ -392,10 +388,10 @@ export default function Dashboard() {
         </Card>
 
         {/* Epic Progress Section */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <h2 className="text-2xl font-bold text-foreground">Epic Progress</h2>
           {loadingEpics ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i} className="p-6">
                   <Skeleton className="h-6 w-3/4 mb-3" />
@@ -405,62 +401,63 @@ export default function Dashboard() {
               ))}
             </div>
           ) : epicData.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {epicData.map((epic, index) => {
-                const colorClass = epicColors[index % epicColors.length];
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {epicData.map((epic) => {
                 const isExpanded = expandedEpics[epic.epic_key];
                 return (
                   <Card
                     key={epic.epic_key}
-                    className={cn("p-6 transition-all cursor-pointer hover:shadow-lg rounded-xl", colorClass)}
+                    className="p-6 transition-all duration-200 cursor-pointer hover:shadow-premium-lg"
                     onClick={() => toggleEpic(epic.epic_key)}
                   >
                     <div className="space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-semibold text-primary">{epic.epic_key}</span>
+                            <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded">{epic.epic_key}</span>
                             {isExpanded ? (
                               <ChevronUp className="h-4 w-4 text-muted-foreground" />
                             ) : (
                               <ChevronDown className="h-4 w-4 text-muted-foreground" />
                             )}
                           </div>
-                          <h3 className="text-lg font-semibold text-foreground">{epic.epic_name}</h3>
+                          <h3 className="text-lg font-semibold text-foreground line-clamp-2">{epic.epic_name}</h3>
                         </div>
-                        <span className="text-2xl font-bold text-primary">{epic.completion_percent}%</span>
+                        <span className="text-3xl font-bold bg-gradient-to-br from-primary to-accent bg-clip-text text-transparent">
+                          {epic.completion_percent}%
+                        </span>
                       </div>
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-sm text-muted-foreground">
                           <span>
-                            {epic.completed_stories} / {epic.total_stories} stories
+                            {epic.completed_stories} / {epic.total_stories} stories completed
                           </span>
                         </div>
-                        <div className="relative h-4 bg-white/50 rounded-full overflow-hidden">
+                        <div className="relative h-2.5 bg-muted rounded-full overflow-hidden">
                           <div
-                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500"
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-accent transition-all duration-500 ease-out"
                             style={{ width: `${epic.completion_percent}%` }}
                           />
                         </div>
                       </div>
 
                       {isExpanded && (
-                        <div className="pt-4 border-t border-border/50 space-y-3">
+                        <div className="pt-4 border-t border-border space-y-3 animate-fade-in">
                           {loadingEpicIssues[epic.epic_key] ? (
                             <div className="space-y-2">
                               <Skeleton className="h-16 w-full" />
                               <Skeleton className="h-16 w-full" />
                             </div>
                           ) : epicIssues[epic.epic_key]?.length > 0 ? (
-                            <div className="space-y-2 max-h-80 overflow-y-auto">
+                            <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                               {epicIssues[epic.epic_key].map((issue) => (
                                 <Card
                                   key={issue.key}
-                                  className="bg-white p-3 rounded-lg border border-slate-200 hover:shadow-md transition-all"
+                                  className="p-3 bg-background hover:shadow-premium transition-all duration-200"
                                 >
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1">
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
                                       <a
                                         href={`https://your-domain.atlassian.net/browse/${issue.key}`}
                                         target="_blank"
@@ -470,18 +467,18 @@ export default function Dashboard() {
                                       >
                                         {issue.key}
                                       </a>
-                                      <p className="text-sm text-foreground mt-1">{issue.summary}</p>
-                                    </div>
-                                    <span
-                                      className={cn(
-                                        "px-2 py-1 rounded-lg text-xs font-medium whitespace-nowrap ml-4",
-                                        issue.status_category_key === "done" && "bg-green-100 text-green-800",
-                                        issue.status_category_key === "indeterminate" && "bg-blue-100 text-blue-800",
-                                        issue.status_category_key === "new" && "bg-gray-100 text-gray-800"
+                                      <p className="text-sm text-foreground mt-1 line-clamp-2">{issue.summary}</p>
+                                      {issue.assignee && (
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Assignee: {issue.assignee}
+                                        </p>
                                       )}
-                                    >
-                                      {issue.status}
-                                    </span>
+                                    </div>
+                                    <StatusBadge 
+                                      status={issue.status_name} 
+                                      statusCategory={issue.status_category_key}
+                                      className="flex-shrink-0"
+                                    />
                                   </div>
                                 </Card>
                               ))}
@@ -499,40 +496,40 @@ export default function Dashboard() {
               })}
             </div>
           ) : (
-            <Card className="bg-slate-50 p-8 rounded-xl shadow-sm text-center border-slate-200">
+            <Card className="p-8 text-center">
               <p className="text-muted-foreground">No epic data available</p>
             </Card>
           )}
         </div>
 
         {/* Navigation Shortcuts */}
-        <Card className="p-8 bg-slate-50 rounded-xl shadow-sm border-slate-200">
+        <Card className="p-8">
           <h2 className="text-xl font-bold text-foreground mb-6 text-center">Quick Actions</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Button
               onClick={() => navigate("/roadmap")}
               size="lg"
-              className="h-24 flex flex-col gap-2 text-base font-semibold"
+              className="h-28 flex flex-col gap-3 text-base font-semibold shadow-premium hover:shadow-premium-lg"
             >
-              <Calendar className="h-6 w-6" />
-              Roadmap → Sprint Planner
+              <Calendar className="h-7 w-7" />
+              Roadmap Sprint Planner
             </Button>
             <Button
               onClick={() => navigate("/context")}
               size="lg"
               variant="secondary"
-              className="h-24 flex flex-col gap-2 text-base font-semibold"
+              className="h-28 flex flex-col gap-3 text-base font-semibold"
             >
-              <FileText className="h-6 w-6" />
+              <FileText className="h-7 w-7" />
               Register Context
             </Button>
             <Button
               onClick={() => navigate("/meetings")}
               size="lg"
               variant="outline"
-              className="h-24 flex flex-col gap-2 text-base font-semibold"
+              className="h-28 flex flex-col gap-3 text-base font-semibold"
             >
-              <Lightbulb className="h-6 w-6" />
+              <Lightbulb className="h-7 w-7" />
               Meeting Insights
             </Button>
           </div>
