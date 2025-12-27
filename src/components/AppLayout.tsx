@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "./ui/button";
 import { ModeBadge } from "./ModeBadge";
+import sprintIqLogo from "@/assets/sprint-iq-logo.png";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -39,8 +40,8 @@ export const AppLayout = ({ children, pageTitle }: AppLayoutProps) => {
       {/* Premium Sidebar */}
       <aside className="w-64 bg-sidebar flex flex-col shadow-premium-lg">
         <div className="p-6 border-b border-sidebar-border">
-          <h1 className="text-2xl font-bold text-sidebar-foreground">PlanFlow AI</h1>
-          <p className="text-xs text-sidebar-foreground/60 mt-1">Product Management Command Center</p>
+          <img src={sprintIqLogo} alt="Sprint IQ" className="h-10 w-auto" />
+          <p className="text-xs text-sidebar-foreground/60 mt-2">Product Management Command Center</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
