@@ -30,7 +30,7 @@ export default function Login() {
       <Card className="w-full max-w-md p-8">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <img src={sprintIqLogo} alt="Sprint IQ" className="h-12 w-auto mx-auto" />
+            <img src={sprintIqLogo} alt="Sprint IQ" className="h-32 w-auto mx-auto" />
             <p className="text-muted-foreground">AI-assisted Sprint Planning & PBR</p>
           </div>
 
