@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import sprintIqLogo from '@/assets/sprint-iq-logo.png';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -29,7 +30,7 @@ export default function Login() {
       <Card className="w-full max-w-md p-8">
         <div className="space-y-6">
           <div className="text-center space-y-2">
-            <h1 className="text-3xl font-bold text-primary">PlanFlow AI</h1>
+            <img src={sprintIqLogo} alt="Sprint IQ" className="h-12 w-auto mx-auto" />
             <p className="text-muted-foreground">AI-assisted Sprint Planning & PBR</p>
           </div>
 
